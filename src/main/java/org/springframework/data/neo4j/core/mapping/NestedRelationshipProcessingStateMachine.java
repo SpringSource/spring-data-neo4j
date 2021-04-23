@@ -37,6 +37,34 @@ import org.springframework.lang.Nullable;
 @API(status = API.Status.INTERNAL, since = "6.0")
 public final class NestedRelationshipProcessingStateMachine {
 
+	public void irgendwasMitIds(Object newRelatedObject, Long relatedInternalId) {
+		try {
+			write.lock();
+			this.blubb.put(newRelatedObject, relatedInternalId);
+		} finally {
+			write.unlock();
+		}
+	}
+
+	public Long irgendwasMitIdsLesen(Object entity) {
+		try {
+			read.lock();
+			Object found = entity;
+			while(found != null) {
+				Long aLong = blubb.get(found);
+				if (aLong != null) {
+					return aLong;
+				}
+				found = processedObjectsAlias.get(entity);
+			}
+			return null;
+		} finally {
+			read.unlock();
+		}
+	}
+
+	private Map<Object, Long> blubb = new HashMap<>();
+
 	/**
 	 * Valid processing states.
 	 */
@@ -63,8 +91,18 @@ public final class NestedRelationshipProcessingStateMachine {
 	 */
 	private final Map<Object, Object> processedObjectsAlias = new HashMap<>();
 
+	public NestedRelationshipProcessingStateMachine(Object initialObject, Long id) {
+		processedObjects.add(initialObject);
+		irgendwasMitIds(initialObject, id);
+	}
+
+	// maybe delete us
 	public NestedRelationshipProcessingStateMachine(Object initialObject) {
 		processedObjects.add(initialObject);
+	}
+
+	public NestedRelationshipProcessingStateMachine() {
+
 	}
 
 	/**
@@ -189,6 +227,10 @@ public final class NestedRelationshipProcessingStateMachine {
 	public void markValueAsProcessedAs(Object relatedValueToStore, Object bean) {
 		try {
 			write.lock();
+			// no need to keep more than one alias
+			if (processedObjectsAlias.get(relatedValueToStore) != null) {
+				return;
+			}
 			processedObjectsAlias.put(relatedValueToStore, bean);
 		} finally {
 			write.unlock();

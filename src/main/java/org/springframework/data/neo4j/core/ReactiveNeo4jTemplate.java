@@ -345,7 +345,7 @@ public final class ReactiveNeo4jTemplate implements ReactiveNeo4jOperations, Rea
 						if (entityMetaData.isUsingInternalIds()) {
 							propertyAccessor.setProperty(entityMetaData.getRequiredIdProperty(), internalId);
 						}
-					}).then(Mono.defer(() -> processRelations(entityMetaData, instance, propertyAccessor, isNewEntity, includeProperty)));
+					}).flatMap(internalId -> Mono.defer(() -> processRelations(entityMetaData, instance, internalId, propertyAccessor, isNewEntity, includeProperty)));
 				});
 	}
 
@@ -451,7 +451,7 @@ public final class ReactiveNeo4jTemplate implements ReactiveNeo4jOperations, Rea
 							counters.nodesCreated(), counters.nodesDeleted(), counters.relationshipsCreated(),
 							counters.relationshipsDeleted(), counters.propertiesSet()));
 				}).thenMany(Flux.fromIterable(entitiesToBeSaved)
-						.flatMap(t -> processRelations(entityMetaData, t.getT1(), entityMetaData.getPropertyAccessor(t.getT3()), t.getT2(), TemplateSupport.computeIncludePropertyPredicate(includedProperties)))
+						.flatMap(t -> processRelations(entityMetaData, t.getT1(), -12L, entityMetaData.getPropertyAccessor(t.getT3()), t.getT2(), TemplateSupport.computeIncludePropertyPredicate(includedProperties)))
 				));
 	}
 
@@ -678,12 +678,12 @@ public final class ReactiveNeo4jTemplate implements ReactiveNeo4jOperations, Rea
 	 * @param <T>                    The type of the entity to save
 	 * @return A mono representing the whole stream of save operations.
 	 */
-	private <T> Mono<T> processRelations(Neo4jPersistentEntity<?> neo4jPersistentEntity, T originalInstance,
+	private <T> Mono<T> processRelations(Neo4jPersistentEntity<?> neo4jPersistentEntity, T originalInstance, Long id,
 			PersistentPropertyAccessor<?> parentPropertyAccessor,
 			boolean isParentObjectNew, Predicate<String> includeProperty) {
 
 		return processNestedRelations(neo4jPersistentEntity, parentPropertyAccessor, isParentObjectNew,
-				new NestedRelationshipProcessingStateMachine(originalInstance), includeProperty);
+				new NestedRelationshipProcessingStateMachine(originalInstance, id), includeProperty);
 	}
 
 	private <T> Mono<T> processNestedRelations(Neo4jPersistentEntity<?> sourceEntity, PersistentPropertyAccessor<?> parentPropertyAccessor,
@@ -765,15 +765,16 @@ public final class ReactiveNeo4jTemplate implements ReactiveNeo4jOperations, Rea
 			Flux<RelationshipHandler> relationshipCreation = Flux.fromIterable(relatedValuesToStore).concatMap(relatedValueToStore -> {
 
 				Object relatedNodePreEvt = relationshipContext.identifyAndExtractRelationshipTargetNode(relatedValueToStore);
-				return Mono.deferContextual(ctx -> eventSupport
-						.maybeCallBeforeBind(relatedNodePreEvt)
+				return Mono.deferContextual(ctx ->
+						((stateMachine.hasProcessedValue(relatedNodePreEvt))
+						? Mono.just(stateMachine.getProcessedAs(relatedNodePreEvt))
+						: eventSupport.maybeCallBeforeBind(relatedNodePreEvt))
 						.flatMap(newRelatedObject -> {
 							Neo4jPersistentEntity<?> targetEntity = neo4jMappingContext.getPersistentEntity(relatedNodePreEvt.getClass());
 
 							Mono<Long> queryOrSave;
 							if (stateMachine.hasProcessedValue(relatedValueToStore)) {
-								Object newRelatedObjectForQuery = stateMachine.getProcessedAs(newRelatedObject);
-								queryOrSave = queryRelatedNode(newRelatedObjectForQuery, targetEntity);
+								queryOrSave = Mono.just(stateMachine.irgendwasMitIdsLesen(newRelatedObject));
 							} else {
 								queryOrSave = saveRelatedNode(newRelatedObject, targetEntity);
 							}
@@ -785,6 +786,11 @@ public final class ReactiveNeo4jTemplate implements ReactiveNeo4jOperations, Rea
 										targetPropertyAccessor.setProperty(targetEntity.getRequiredIdProperty(), relatedInternalId);
 										stateMachine.markValueAsProcessedAs(newRelatedObject, targetPropertyAccessor.getBean());
 									}
+									if (targetEntity.getIdDescription() != null && targetEntity.getIdDescription().isExternallyGeneratedId()) {
+										stateMachine.irgendwasMitIds(newRelatedObject, relatedInternalId);
+									}
+									stateMachine.markValueAsProcessedAs(relatedNodePreEvt, newRelatedObject);
+									stateMachine.irgendwasMitIds(targetPropertyAccessor.getBean(), relatedInternalId);
 
 									Object idValue = idProperty != null
 											? relationshipContext

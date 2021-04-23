@@ -349,7 +349,7 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 		if (entityMetaData.isUsingInternalIds()) {
 			propertyAccessor.setProperty(entityMetaData.getRequiredIdProperty(), optionalInternalId.get());
 		}
-		processRelations(entityMetaData, instance, propertyAccessor, isEntityNew, includeProperty);
+		processRelations(entityMetaData, instance, optionalInternalId.get(), propertyAccessor, isEntityNew, includeProperty);
 
 		return propertyAccessor.getBean();
 	}
@@ -427,7 +427,6 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 		ResultSummary resultSummary = neo4jClient
 				.query(() -> renderer.render(cypherGenerator.prepareSaveOfMultipleInstancesOf(entityMetaData)))
 				.bind(entityList).to(Constants.NAME_OF_ENTITY_LIST_PARAM).run();
-
 		SummaryCounters counters = resultSummary.counters();
 		log.debug(() -> String.format(
 				"Created %d and deleted %d nodes, created %d and deleted %d relationships and set %d properties.",
@@ -435,9 +434,11 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 				counters.relationshipsDeleted(), counters.propertiesSet()));
 
 		// Save related
+		Predicate<String> includeProperty = TemplateSupport.computeIncludePropertyPredicate(includedProperties);
+		NestedRelationshipProcessingStateMachine stateMachine = new NestedRelationshipProcessingStateMachine();
 		return entitiesToBeSaved.stream().map(t -> {
 			PersistentPropertyAccessor<T> propertyAccessor = entityMetaData.getPropertyAccessor(t.t3);
-			return processRelations(entityMetaData, t.t1, propertyAccessor, t.t2, TemplateSupport.computeIncludePropertyPredicate(includedProperties));
+			return (T) processNestedRelations(entityMetaData, propertyAccessor, t.t2, stateMachine, includeProperty);
 		}).collect(Collectors.toList());
 	}
 
@@ -581,12 +582,12 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 	 * @param isParentObjectNew      A flag if the parent was new
 	 * @param includeProperty        A predicate telling to include a relationship property or not
 	 */
-	private <T> T processRelations(Neo4jPersistentEntity<?> neo4jPersistentEntity, T originalInstance,
+	private <T> T processRelations(Neo4jPersistentEntity<?> neo4jPersistentEntity, T originalInstance, Long id,
 			PersistentPropertyAccessor<?> parentPropertyAccessor,
 			boolean isParentObjectNew, Predicate<String> includeProperty) {
 
 		return processNestedRelations(neo4jPersistentEntity, parentPropertyAccessor, isParentObjectNew,
-				new NestedRelationshipProcessingStateMachine(originalInstance), includeProperty);
+				new NestedRelationshipProcessingStateMachine(originalInstance, id), includeProperty);
 	}
 
 	private <T> T processNestedRelations(Neo4jPersistentEntity<?> sourceEntity, PersistentPropertyAccessor<?> propertyAccessor,
@@ -671,13 +672,14 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 
 				boolean isEntityNew = targetEntity.isNew(relatedObjectBeforeCallbacks);
 
-				Object newRelatedObject = eventSupport.maybeCallBeforeBind(relatedObjectBeforeCallbacks);
+				Object newRelatedObject = stateMachine.hasProcessedValue(relatedObjectBeforeCallbacks)
+						? stateMachine.getProcessedAs(relatedObjectBeforeCallbacks)
+						: eventSupport.maybeCallBeforeBind(relatedObjectBeforeCallbacks);
 
 				Long relatedInternalId;
 				// No need to save values if processed
 				if (stateMachine.hasProcessedValue(relatedValueToStore)) {
-					Object newRelatedObjectForQuery = stateMachine.getProcessedAs(newRelatedObject);
-					relatedInternalId = queryRelatedNode(newRelatedObjectForQuery, targetEntity);
+					relatedInternalId = stateMachine.irgendwasMitIdsLesen(newRelatedObject);
 				} else {
 					relatedInternalId = saveRelatedNode(newRelatedObject, targetEntity);
 				}
@@ -715,6 +717,12 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 					targetPropertyAccessor.setProperty(targetEntity.getRequiredIdProperty(), relatedInternalId);
 					stateMachine.markValueAsProcessedAs(newRelatedObject, targetPropertyAccessor.getBean());
 				}
+				if (targetEntity.getIdDescription() != null && targetEntity.getIdDescription().isExternallyGeneratedId()) {
+					stateMachine.irgendwasMitIds(newRelatedObject, relatedInternalId);
+				}
+
+				stateMachine.markValueAsProcessedAs(relatedObjectBeforeCallbacks, newRelatedObject);
+				stateMachine.irgendwasMitIds(targetPropertyAccessor.getBean(), relatedInternalId);
 
 				if (processState != ProcessState.PROCESSED_ALL_VALUES) {
 					processNestedRelations(targetEntity, targetPropertyAccessor, isEntityNew, stateMachine, s -> true);
@@ -733,22 +741,6 @@ public final class Neo4jTemplate implements Neo4jOperations, FluentNeo4jOperatio
 		});
 
 		return (T) propertyAccessor.getBean();
-	}
-
-	private <Y> Long queryRelatedNode(Object entity, Neo4jPersistentEntity<?> targetNodeDescription) {
-
-		Neo4jPersistentProperty requiredIdProperty = targetNodeDescription.getRequiredIdProperty();
-		PersistentPropertyAccessor<Object> targetPropertyAccessor = targetNodeDescription.getPropertyAccessor(entity);
-		Object idValue = targetPropertyAccessor.getProperty(requiredIdProperty);
-
-		return neo4jClient.query(() ->
-				renderer.render(cypherGenerator.prepareMatchOf(targetNodeDescription,
-						targetNodeDescription.getIdExpression().isEqualTo(parameter(Constants.NAME_OF_ID)))
-						.returning(Constants.NAME_OF_INTERNAL_ID)
-						.build())
-				)
-				.bindAll(Collections.singletonMap(Constants.NAME_OF_ID, idValue))
-				.fetchAs(Long.class).one().get();
 	}
 
 	private <Y> Long saveRelatedNode(Object entity, NodeDescription targetNodeDescription) {
