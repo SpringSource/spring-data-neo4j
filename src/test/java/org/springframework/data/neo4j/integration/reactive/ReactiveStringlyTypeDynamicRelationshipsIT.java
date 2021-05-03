@@ -18,6 +18,8 @@ package org.springframework.data.neo4j.integration.reactive;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
+import org.neo4j.driver.Bookmark;
+import org.springframework.data.neo4j.core.transaction.ReactiveNeo4jTransactionManager;
 import org.springframework.data.neo4j.integration.shared.common.Club;
 import org.springframework.data.neo4j.integration.shared.common.ClubRelationship;
 import org.springframework.data.neo4j.integration.shared.common.Hobby;
@@ -55,9 +57,18 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @Tag(Neo4jExtension.NEEDS_REACTIVE_SUPPORT)
 class ReactiveStringlyTypeDynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithStringlyTypedRelatives> {
 
+	private final ReactiveNeo4jTransactionManager reactiveNeo4jTransactionManager;
+
 	@Autowired
-	ReactiveStringlyTypeDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture) {
+	ReactiveStringlyTypeDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture, ReactiveNeo4jTransactionManager reactiveNeo4jTransactionManager) {
 		super(driver, bookmarkCapture);
+		this.reactiveNeo4jTransactionManager = reactiveNeo4jTransactionManager;
+	}
+
+	@Override
+	protected void setLastBookmark(Bookmark lastBookmark) {
+
+		this.reactiveNeo4jTransactionManager.setLastBookmark(lastBookmark);
 	}
 
 	@Test

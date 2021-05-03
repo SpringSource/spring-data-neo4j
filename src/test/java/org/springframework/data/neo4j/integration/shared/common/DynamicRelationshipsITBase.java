@@ -19,6 +19,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.neo4j.driver.Bookmark;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.Transaction;
@@ -54,6 +55,8 @@ public abstract class DynamicRelationshipsITBase<T> {
 		this.labelOfTestSubject = typeName.substring(typeName.lastIndexOf(".") + 1);
 	}
 
+	protected abstract void setLastBookmark(Bookmark lastBookmark);
+
 	@BeforeEach
 	protected void setupData() {
 		try (Session session = driver.session(); Transaction transaction = session.beginTransaction()) {
@@ -69,6 +72,7 @@ public abstract class DynamicRelationshipsITBase<T> {
 							+ "CREATE (t) - [:DOGS] -> (w:Pet {name: dog}) " + "RETURN DISTINCT id(t) as id")
 					.single().get("id").asLong();
 			transaction.commit();
+			setLastBookmark(session.lastBookmark());
 		}
 	}
 }

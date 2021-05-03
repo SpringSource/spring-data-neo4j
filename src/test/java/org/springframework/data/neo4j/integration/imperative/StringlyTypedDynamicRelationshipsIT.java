@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.neo4j.driver.Bookmark;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Transaction;
 import org.neo4j.driver.Values;
@@ -31,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.neo4j.config.AbstractNeo4jConfig;
+import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
 import org.springframework.data.neo4j.integration.shared.common.Club;
 import org.springframework.data.neo4j.integration.shared.common.ClubRelationship;
 import org.springframework.data.neo4j.integration.shared.common.DynamicRelationshipsITBase;
@@ -52,9 +54,18 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 class StringlyTypedDynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithStringlyTypedRelatives> {
 
+	private final Neo4jTransactionManager transactionManager;
+
 	@Autowired
-	StringlyTypedDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture) {
+	StringlyTypedDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture, Neo4jTransactionManager transactionManager) {
 		super(driver, bookmarkCapture);
+		this.transactionManager = transactionManager;
+	}
+
+	@Override
+	protected void setLastBookmark(Bookmark lastBookmark) {
+
+		this.transactionManager.setLastBookmark(lastBookmark);
 	}
 
 	@Test
