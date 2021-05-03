@@ -13,63 +13,57 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.data.neo4j.core.transaction;
+package org.springframework.data.neo4j.test;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.neo4j.driver.Bookmark;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.lang.Nullable;
+import org.neo4j.driver.SessionConfig;
+import org.springframework.context.ApplicationListener;
+import org.springframework.data.neo4j.core.transaction.Neo4jBookmarksUpdatedEvent;
 
 /**
- * Responsible for storing, updating and retrieving the bookmarks of Neo4j's transaction.
+ * This is a utility class that captures the most recent bookmarks after any of the Spring Data Neo4j transaction managers
+ * commits a transaction leading to a {@link Neo4jBookmarksUpdatedEvent}.
  *
  * @author Michael J. Simons
- * @soundtrack Metallica - Death Magnetic
- * @since 6.0
+ * @soundtrack Black Sabbath - Master Of Reality
  */
-final class Neo4jBookmarkManager {
-
-	private final Set<Bookmark> bookmarks = new HashSet<>();
+public final class BookmarkCapture implements ApplicationListener<Neo4jBookmarksUpdatedEvent> {
 
 	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 	private final Lock read = lock.readLock();
 	private final Lock write = lock.writeLock();
 
-	@Nullable
-	private ApplicationEventPublisher applicationEventPublisher;
+	private Set<Bookmark> latestBookmarks;
 
-	Collection<Bookmark> getBookmarks() {
+	public SessionConfig createSessionConfig() {
+		return createSessionConfig(null);
+	}
 
+	public SessionConfig createSessionConfig(String databaseName) {
 		try {
 			read.lock();
-			return Collections.unmodifiableSet(new HashSet<>(bookmarks));
+			SessionConfig.Builder builder = SessionConfig.builder().withBookmarks(latestBookmarks == null ? Collections.emptyList() : latestBookmarks);
+			if (databaseName != null) {
+				builder.withDatabase(databaseName);
+			}
+			return builder.build();
 		} finally {
 			read.unlock();
 		}
 	}
 
-	void updateBookmarks(Collection<Bookmark> usedBookmarks, Bookmark lastBookmark) {
-
+	@Override
+	public void onApplicationEvent(Neo4jBookmarksUpdatedEvent event) {
 		try {
 			write.lock();
-			bookmarks.removeAll(usedBookmarks);
-			bookmarks.add(lastBookmark);
+			latestBookmarks = event.getBookmarks();
 		} finally {
 			write.unlock();
 		}
-
-		if (applicationEventPublisher != null) {
-			applicationEventPublisher.publishEvent(new Neo4jBookmarksUpdatedEvent(new HashSet<>(bookmarks)));
-		}
-	}
-
-	void setApplicationEventPublisher(@Nullable ApplicationEventPublisher applicationEventPublisher) {
-		this.applicationEventPublisher = applicationEventPublisher;
 	}
 }

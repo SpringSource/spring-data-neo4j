@@ -21,6 +21,9 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.Transaction;
 import org.neo4j.driver.TransactionConfig;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.data.neo4j.core.DatabaseSelectionProvider;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.lang.Nullable;
@@ -42,7 +45,7 @@ import org.springframework.util.Assert;
  * @since 6.0
  */
 @API(status = API.Status.STABLE, since = "6.0")
-public class Neo4jTransactionManager extends AbstractPlatformTransactionManager {
+public final class Neo4jTransactionManager extends AbstractPlatformTransactionManager implements ApplicationContextAware {
 
 	/**
 	 * The underlying driver, which is also the synchronisation object.
@@ -223,6 +226,23 @@ public class Neo4jTransactionManager extends AbstractPlatformTransactionManager 
 		transactionObject.getRequiredResourceHolder().close();
 		transactionObject.setResourceHolder(null);
 		TransactionSynchronizationManager.unbindResource(driver);
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+
+		this.bookmarkManager.setApplicationEventPublisher(applicationContext);
+	}
+
+	/**
+	 * Use this method only very carefully and intentionally. There is hardly <strong>ever</strong> a need to interact with
+	 * Neo4j Causal Cluster bookmarks yourself.
+	 * @param bookmark A new bookmark. It will replace all other registered bookmarks.
+	 * @since 6.1.1
+	 */
+	public void setLastBookmark(Bookmark bookmark) {
+
+		this.bookmarkManager.updateBookmarks(bookmarkManager.getBookmarks(), bookmark);
 	}
 
 	static class Neo4jTransactionObject implements SmartTransactionObject {

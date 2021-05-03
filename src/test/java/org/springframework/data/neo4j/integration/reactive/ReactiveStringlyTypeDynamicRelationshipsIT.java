@@ -44,6 +44,7 @@ import org.springframework.data.neo4j.integration.shared.common.PersonWithString
 import org.springframework.data.neo4j.integration.shared.common.Pet;
 import org.springframework.data.neo4j.repository.ReactiveNeo4jRepository;
 import org.springframework.data.neo4j.repository.config.EnableReactiveNeo4jRepositories;
+import org.springframework.data.neo4j.test.BookmarkCapture;
 import org.springframework.data.neo4j.test.Neo4jExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -55,8 +56,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 class ReactiveStringlyTypeDynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithStringlyTypedRelatives> {
 
 	@Autowired
-	ReactiveStringlyTypeDynamicRelationshipsIT(Driver driver) {
-		super(driver);
+	ReactiveStringlyTypeDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture) {
+		super(driver, bookmarkCapture);
 	}
 
 	@Test
@@ -213,7 +214,7 @@ class ReactiveStringlyTypeDynamicRelationshipsIT extends DynamicRelationshipsITB
 					assertThat(relatives).containsOnlyKeys("RELATIVE_1", "RELATIVE_2");
 				}).verifyComplete();
 
-		try (Transaction transaction = driver.session().beginTransaction()) {
+		try (Transaction transaction = driver.session(bookmarkCapture.createSessionConfig()).beginTransaction()) {
 			long numberOfRelations = transaction
 					.run("" + "MATCH (t:" + labelOfTestSubject + ") WHERE id(t) = $id " + "RETURN size((t)-->(:Person))"
 							+ " as numberOfRelations", Values.parameters("id", recorded.get(0).getId()))
@@ -262,7 +263,7 @@ class ReactiveStringlyTypeDynamicRelationshipsIT extends DynamicRelationshipsITB
 			assertThat(writtenPets).containsOnlyKeys("MONSTERS", "FISH");
 		}).verifyComplete();
 
-		try (Transaction transaction = driver.session().beginTransaction()) {
+		try (Transaction transaction = driver.session(bookmarkCapture.createSessionConfig()).beginTransaction()) {
 			long numberOfRelations = transaction
 					.run("" + "MATCH (t:" + labelOfTestSubject + ") WHERE id(t) = $id " + "RETURN size((t)-->(:Pet))"
 							+ " as numberOfRelations", Values.parameters("id", recorded.get(0).getId()))
@@ -288,5 +289,9 @@ class ReactiveStringlyTypeDynamicRelationshipsIT extends DynamicRelationshipsITB
 			return neo4jConnectionSupport.getDriver();
 		}
 
+		@Bean
+		public BookmarkCapture bookmarkCapture() {
+			return new BookmarkCapture();
+		}
 	}
 }
