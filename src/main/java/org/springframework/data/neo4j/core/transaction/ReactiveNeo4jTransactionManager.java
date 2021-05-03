@@ -19,7 +19,6 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 import org.apiguardian.api.API;
-import org.neo4j.driver.Bookmark;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.reactive.RxSession;
@@ -47,6 +46,8 @@ import org.springframework.util.Assert;
  */
 @API(status = API.Status.STABLE, since = "6.0")
 public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTransactionManager implements ApplicationContextAware {
+
+	public final static String CONTEXT_KEY_LAST_BOOKMARKS = "SDN_LAST_BOOKMARKS";
 
 	/**
 	 * The underlying driver, which is also the synchronisation object.
@@ -147,7 +148,7 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 	protected Mono<Void> doBegin(TransactionSynchronizationManager transactionSynchronizationManager, Object transaction,
 			TransactionDefinition transactionDefinition) throws TransactionException {
 
-		return Mono.defer(() -> {
+		return Mono.deferContextual(ctx -> {
 			ReactiveNeo4jTransactionObject transactionObject = extractNeo4jTransaction(transaction);
 
 			TransactionConfig transactionConfig = Neo4jTransactionUtils.createTransactionConfigFrom(transactionDefinition);
@@ -155,9 +156,9 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 
 			transactionSynchronizationManager.setCurrentTransactionReadOnly(readOnly);
 
-			return databaseSelectionProvider.getDatabaseSelection().switchIfEmpty(Mono.just(DatabaseSelection.undecided()))
-					.map(
-							databaseName -> new Neo4jTransactionContext(databaseName.getValue(), bookmarkManager.getBookmarks()))
+			return databaseSelectionProvider.getDatabaseSelection()
+					.switchIfEmpty(Mono.just(DatabaseSelection.undecided()))
+					.map(databaseName -> new Neo4jTransactionContext(databaseName.getValue(), ctx.getOrDefault(CONTEXT_KEY_LAST_BOOKMARKS, bookmarkManager.getBookmarks())))
 					.map(
 							context -> Tuples
 									.of(context,
@@ -191,17 +192,6 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 
 		this.bookmarkManager.setApplicationEventPublisher(applicationContext);
-	}
-
-	/**
-	 * Use this method only very carefully and intentionally. There is hardly <strong>ever</strong> a need to interact with
-	 * Neo4j Causal Cluster bookmarks yourself.
-	 * @param bookmark A new bookmark. It will replace all other registered bookmarks.
-	 * @since 6.1.1
-	 */
-	public void setLastBookmark(Bookmark bookmark) {
-
-		this.bookmarkManager.updateBookmarks(bookmarkManager.getBookmarks(), bookmark);
 	}
 
 	@Override

@@ -15,6 +15,8 @@
  */
 package org.springframework.data.neo4j.core.transaction;
 
+import java.util.Collection;
+
 import org.apiguardian.api.API;
 import org.neo4j.driver.Bookmark;
 import org.neo4j.driver.Driver;
@@ -46,6 +48,8 @@ import org.springframework.util.Assert;
  */
 @API(status = API.Status.STABLE, since = "6.0")
 public final class Neo4jTransactionManager extends AbstractPlatformTransactionManager implements ApplicationContextAware {
+
+	public final static String RESOURCE_KEY_LAST_BOOKMARKS = "SDN_LAST_BOOKMARKS";
 
 	/**
 	 * The underlying driver, which is also the synchronisation object.
@@ -157,9 +161,11 @@ public final class Neo4jTransactionManager extends AbstractPlatformTransactionMa
 		TransactionSynchronizationManager.setCurrentTransactionReadOnly(readOnly);
 
 		try {
+			Collection<Bookmark> bookmarks = (Collection<Bookmark>) TransactionSynchronizationManager.unbindResourceIfPossible(RESOURCE_KEY_LAST_BOOKMARKS);
+
 			// Prepare configuration data
 			Neo4jTransactionContext context = new Neo4jTransactionContext(
-					databaseSelectionProvider.getDatabaseSelection().getValue(), bookmarkManager.getBookmarks());
+					databaseSelectionProvider.getDatabaseSelection().getValue(), bookmarks != null ? bookmarks : bookmarkManager.getBookmarks());
 
 			// Configure and open session together with a native transaction
 			Session session = this.driver.session(
@@ -232,17 +238,6 @@ public final class Neo4jTransactionManager extends AbstractPlatformTransactionMa
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 
 		this.bookmarkManager.setApplicationEventPublisher(applicationContext);
-	}
-
-	/**
-	 * Use this method only very carefully and intentionally. There is hardly <strong>ever</strong> a need to interact with
-	 * Neo4j Causal Cluster bookmarks yourself.
-	 * @param bookmark A new bookmark. It will replace all other registered bookmarks.
-	 * @since 6.1.1
-	 */
-	public void setLastBookmark(Bookmark bookmark) {
-
-		this.bookmarkManager.updateBookmarks(bookmarkManager.getBookmarks(), bookmark);
 	}
 
 	static class Neo4jTransactionObject implements SmartTransactionObject {

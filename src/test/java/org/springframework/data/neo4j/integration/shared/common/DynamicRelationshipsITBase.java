@@ -17,6 +17,7 @@ package org.springframework.data.neo4j.integration.shared.common;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.neo4j.driver.Bookmark;
@@ -41,21 +42,21 @@ public abstract class DynamicRelationshipsITBase<T> {
 
 	protected final Driver driver;
 	protected final BookmarkCapture bookmarkCapture;
+	protected final Consumer<Bookmark> forwarder;
 
 	protected long idOfExistingPerson;
 
 	protected final String labelOfTestSubject;
 
-	protected DynamicRelationshipsITBase(Driver driver,
-			BookmarkCapture bookmarkCapture) {
+	protected DynamicRelationshipsITBase(Driver driver, BookmarkCapture bookmarkCapture, Consumer<Bookmark> forwarder) {
 		this.driver = driver;
 		this.bookmarkCapture = bookmarkCapture;
+		this.forwarder = forwarder;
+
 		Type type = getClass().getGenericSuperclass();
 		String typeName = ((ParameterizedType) type).getActualTypeArguments()[0].getTypeName();
 		this.labelOfTestSubject = typeName.substring(typeName.lastIndexOf(".") + 1);
 	}
-
-	protected abstract void setLastBookmark(Bookmark lastBookmark);
 
 	@BeforeEach
 	protected void setupData() {
@@ -72,7 +73,7 @@ public abstract class DynamicRelationshipsITBase<T> {
 							+ "CREATE (t) - [:DOGS] -> (w:Pet {name: dog}) " + "RETURN DISTINCT id(t) as id")
 					.single().get("id").asLong();
 			transaction.commit();
-			setLastBookmark(session.lastBookmark());
+			forwarder.accept(session.lastBookmark());
 		}
 	}
 }

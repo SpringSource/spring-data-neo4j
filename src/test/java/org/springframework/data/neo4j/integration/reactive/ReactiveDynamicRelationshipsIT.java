@@ -18,9 +18,6 @@ package org.springframework.data.neo4j.integration.reactive;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThat;
 
-import org.neo4j.driver.Bookmark;
-import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
-import org.springframework.data.neo4j.core.transaction.ReactiveNeo4jTransactionManager;
 import org.springframework.data.neo4j.integration.shared.common.Club;
 import org.springframework.data.neo4j.integration.shared.common.ClubRelationship;
 import org.springframework.data.neo4j.integration.shared.common.Hobby;
@@ -52,9 +49,12 @@ import org.springframework.data.neo4j.integration.shared.common.Pet;
 import org.springframework.data.neo4j.repository.ReactiveNeo4jRepository;
 import org.springframework.data.neo4j.repository.config.EnableReactiveNeo4jRepositories;
 import org.springframework.data.neo4j.test.BookmarkCapture;
+import org.springframework.data.neo4j.test.BookmarkUtils;
 import org.springframework.data.neo4j.test.Neo4jExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.ReactiveTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
 /**
  * @author Michael J. Simons
@@ -62,18 +62,9 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @Tag(Neo4jExtension.NEEDS_REACTIVE_SUPPORT)
 class ReactiveDynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithRelatives> {
 
-	private final Neo4jTransactionManager transactionManager;
-
 	@Autowired
-	ReactiveDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture, Neo4jTransactionManager transactionManager) {
-		super(driver, bookmarkCapture);
-		this.transactionManager = transactionManager;
-	}
-
-	@Override
-	protected void setLastBookmark(Bookmark lastBookmark) {
-
-		this.transactionManager.setLastBookmark(lastBookmark);
+	ReactiveDynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture, TransactionalOperator transactionalOperator) {
+		super(driver, bookmarkCapture, b -> BookmarkUtils.fastForwardTo(transactionalOperator, b));
 	}
 
 	@Test
@@ -296,7 +287,7 @@ class ReactiveDynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWi
 
 	interface PersonWithRelativesRepository extends ReactiveNeo4jRepository<PersonWithRelatives, Long> {}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableTransactionManagement
 	@EnableReactiveNeo4jRepositories(considerNestedRepositories = true)
 	static class Config extends AbstractReactiveNeo4jConfig {
@@ -309,6 +300,11 @@ class ReactiveDynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWi
 		@Bean
 		public BookmarkCapture bookmarkCapture() {
 			return new BookmarkCapture();
+		}
+
+		@Bean
+		public TransactionalOperator transactionalOperator(ReactiveTransactionManager reactiveTransactionManager) {
+			return TransactionalOperator.create(reactiveTransactionManager);
 		}
 	}
 }

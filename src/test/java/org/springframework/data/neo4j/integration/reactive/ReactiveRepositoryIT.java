@@ -69,7 +69,6 @@ import org.springframework.data.neo4j.config.AbstractReactiveNeo4jConfig;
 import org.springframework.data.neo4j.core.DatabaseSelection;
 import org.springframework.data.neo4j.core.ReactiveDatabaseSelectionProvider;
 import org.springframework.data.neo4j.core.ReactiveNeo4jTemplate;
-import org.springframework.data.neo4j.core.transaction.ReactiveNeo4jTransactionManager;
 import org.springframework.data.neo4j.integration.reactive.repositories.ReactivePersonRepository;
 import org.springframework.data.neo4j.integration.reactive.repositories.ReactiveThingRepository;
 import org.springframework.data.neo4j.integration.shared.common.AltHobby;
@@ -103,6 +102,7 @@ import org.springframework.data.neo4j.repository.ReactiveNeo4jRepository;
 import org.springframework.data.neo4j.repository.config.EnableReactiveNeo4jRepositories;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.neo4j.test.BookmarkCapture;
+import org.springframework.data.neo4j.test.BookmarkUtils;
 import org.springframework.data.neo4j.test.Neo4jExtension;
 import org.springframework.data.neo4j.types.CartesianPoint2d;
 import org.springframework.data.neo4j.types.GeographicPoint2d;
@@ -1195,8 +1195,7 @@ class ReactiveRepositoryIT {
 			// then
 			List<PersonWithRelationshipWithProperties> shouldBeDifferentPersons = new ArrayList<>();
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create)
 					.recordWith(() -> shouldBeDifferentPersons).expectNextCount(1L).verifyComplete();
 
 			assertThat(shouldBeDifferentPersons).size().isEqualTo(1);
@@ -1495,8 +1494,7 @@ class ReactiveRepositoryIT {
 
 			List<Long> ids = new ArrayList<>();
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).recordWith(() -> ids)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).recordWith(() -> ids)
 					.expectNextCount(1L).verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()),
@@ -1523,8 +1521,7 @@ class ReactiveRepositoryIT {
 			Flux<Long> operationUnderTest = repository.saveAll(persons).map(PersonWithAllConstructor::getId);
 
 			List<Long> ids = new ArrayList<>();
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).recordWith(() -> ids)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).recordWith(() -> ids)
 					.expectNextCount(2L).verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()),
@@ -1543,8 +1540,7 @@ class ReactiveRepositoryIT {
 			Flux<Long> operationUnderTest = repository.saveAll(Arrays.asList(newPerson)).map(PersonWithAllConstructor::getId);
 
 			List<Long> ids = new ArrayList<>();
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).recordWith(() -> ids)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).recordWith(() -> ids)
 					.expectNextCount(1L).verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()),
@@ -1563,8 +1559,7 @@ class ReactiveRepositoryIT {
 				return originalPerson;
 			}).flatMap(repository::save);
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(1L)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(1L)
 					.verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()), s -> {
@@ -1585,8 +1580,7 @@ class ReactiveRepositoryIT {
 				return thing;
 			}).flatMap(repository::save);
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(1L)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(1L)
 					.verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()),
@@ -1611,8 +1605,7 @@ class ReactiveRepositoryIT {
 
 			Flux<ThingWithAssignedId> operationUnderTest = repository.saveAll(things);
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(2L)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(2L)
 					.verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()), s -> {
@@ -1638,8 +1631,7 @@ class ReactiveRepositoryIT {
 
 			Flux<ThingWithAssignedId> operationUnderTest = repository.saveAll(things);
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(2L)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(2L)
 					.verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()), s -> {
@@ -1670,8 +1662,7 @@ class ReactiveRepositoryIT {
 						return repository.save(thing);
 					}));
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(2L)
+			getTransactionalOperator().execute(t -> operationUnderTest).as(StepVerifier::create).expectNextCount(2L)
 					.verifyComplete();
 
 			Flux.usingWhen(Mono.fromSupplier(() -> createRxSession()), s -> {
@@ -1832,8 +1823,7 @@ class ReactiveRepositoryIT {
 			person.setPets(Arrays.asList(pet1, pet2));
 
 			List<Long> ids = new ArrayList<>();
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
-			transactionalOperator.execute(t -> repository.save(person).map(PersonWithRelationship::getId))
+			getTransactionalOperator().execute(t -> repository.save(person).map(PersonWithRelationship::getId))
 					.as(StepVerifier::create).recordWith(() -> ids).expectNextCount(1L).verifyComplete();
 
 			assertWithSession(session -> {
@@ -1891,7 +1881,7 @@ class ReactiveRepositoryIT {
 
 			List<Long> ids = new ArrayList<>();
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
+			TransactionalOperator transactionalOperator = getTransactionalOperator();
 
 			transactionalOperator.execute(t -> repository.save(person).map(PersonWithRelationship::getId))
 					.as(StepVerifier::create).recordWith(() -> ids).expectNextCount(1L).verifyComplete();
@@ -1958,7 +1948,7 @@ class ReactiveRepositoryIT {
 
 			List<Long> ids = new ArrayList<>();
 
-			TransactionalOperator transactionalOperator = TransactionalOperator.create(getTransactionManager());
+			TransactionalOperator transactionalOperator = getTransactionalOperator();
 
 			transactionalOperator.execute(t -> repository.save(person).map(PersonWithRelationship::getId))
 					.as(StepVerifier::create).recordWith(() -> ids).expectNextCount(1L).verifyComplete();
@@ -2646,7 +2636,7 @@ class ReactiveRepositoryIT {
 
 		@Autowired private Driver driver;
 
-		@Autowired private ReactiveTransactionManager transactionManager;
+		@Autowired private TransactionalOperator transactionalOperator;
 
 		@Autowired private BookmarkCapture bookmarkCapture;
 
@@ -2667,7 +2657,7 @@ class ReactiveRepositoryIT {
 			try (Session session = driver.session(Optional.ofNullable(databaseSelection.getValue()).map(SessionConfig::forDatabase)
 					.orElseGet(SessionConfig::defaultConfig))) {
 				T result = sessionConsumer.apply(session);
-				((ReactiveNeo4jTransactionManager) transactionManager).setLastBookmark(session.lastBookmark());
+				BookmarkUtils.fastForwardTo(transactionalOperator, session.lastBookmark());
 				return result;
 			}
 		}
@@ -2684,12 +2674,12 @@ class ReactiveRepositoryIT {
 			return driver.rxSession(bookmarkCapture.createSessionConfig(databaseSelection.getValue()));
 		}
 
-		ReactiveTransactionManager getTransactionManager() {
-			return transactionManager;
+		TransactionalOperator getTransactionalOperator() {
+			return transactionalOperator;
 		}
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableReactiveNeo4jRepositories(considerNestedRepositories = true)
 	@EnableTransactionManagement
 	static class Config extends AbstractReactiveNeo4jConfig {
@@ -2700,7 +2690,7 @@ class ReactiveRepositoryIT {
 		}
 
 		@Override
-		protected Collection<String> getMappingBasePackages() {
+		public Collection<String> getMappingBasePackages() {
 			return Collections.singletonList(PersonWithAllConstructor.class.getPackage().getName());
 		}
 
@@ -2709,9 +2699,14 @@ class ReactiveRepositoryIT {
 			return new BookmarkCapture();
 		}
 
+		@Bean
+		public TransactionalOperator transactionalOperator(ReactiveTransactionManager reactiveTransactionManager) {
+			return TransactionalOperator.create(reactiveTransactionManager);
+		}
+
 		@Override
 		@Bean
-		protected ReactiveDatabaseSelectionProvider reactiveDatabaseSelectionProvider() {
+		public ReactiveDatabaseSelectionProvider reactiveDatabaseSelectionProvider() {
 			return Optional.ofNullable(databaseSelection.getValue())
 					.map(ReactiveDatabaseSelectionProvider::createStaticDatabaseSelectionProvider)
 					.orElse(ReactiveDatabaseSelectionProvider.getDefaultSelectionProvider());
