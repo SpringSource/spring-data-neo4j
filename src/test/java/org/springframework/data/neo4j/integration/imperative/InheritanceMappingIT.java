@@ -375,6 +375,7 @@ public class InheritanceMappingIT {
 			return new BookmarkCapture();
 		}
 
+		@Bean
 		@Override
 		public PlatformTransactionManager transactionManager(Driver driver, DatabaseSelectionProvider databaseNameProvider) {
 
