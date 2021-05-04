@@ -257,7 +257,7 @@ public class InheritanceMappingIT {
 			bookmarkCapture.seedWith(session.lastBookmark());
 		}
 
-		Optional<Inheritance.SomeInterfaceImpl3a> optionalEntity =transactionTemplate.execute(tx -> template.findById(id, Inheritance.SomeInterfaceImpl3a.class));
+		Optional<Inheritance.SomeInterfaceImpl3a> optionalEntity = transactionTemplate.execute(tx -> template.findById(id, Inheritance.SomeInterfaceImpl3a.class));
 		assertThat(optionalEntity).hasValueSatisfying(v -> {
 			assertThat(v.getName()).isEqualTo("s");
 			assertThat(v).extracting(Inheritance.SomeInterface3::getRelated)
