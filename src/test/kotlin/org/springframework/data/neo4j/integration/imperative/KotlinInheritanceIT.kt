@@ -79,12 +79,12 @@ class KotlinInheritanceIT @Autowired constructor(
 			bookmarkCapture.seedWith(session.lastBookmark())
 		}
 
-		val existingThing = transactionTemplate.execute { template.findById<ConcreteNodeWithAbstractKotlinBase>(existingId!!)!! }
+		val existingThing = transactionTemplate.execute { template.findById<ConcreteNodeWithAbstractKotlinBase>(existingId!!) }!!
 
 		assertThat(existingThing.name).isEqualTo("Foo")
 		assertThat(existingThing.anotherProperty).isEqualTo("Bar")
 
-		val thing = transactionTemplate.execute { template.save(ConcreteNodeWithAbstractKotlinBase("onBase", "onDependent")) };
+		val thing = transactionTemplate.execute { template.save(ConcreteNodeWithAbstractKotlinBase("onBase", "onDependent")) }!!;
 		assertThat(thing.id).isNotNull()
 		assertThat(thing.name).isEqualTo("onBase")
 		assertThat(thing.anotherProperty).isEqualTo("onDependent")
@@ -110,12 +110,12 @@ class KotlinInheritanceIT @Autowired constructor(
 			bookmarkCapture.seedWith(session.lastBookmark())
 		}
 
-		val existingThing = transactionTemplate.execute { template.findById<ConcreteDataNodeWithAbstractKotlinBase>(existingId!!)!! }
+		val existingThing = transactionTemplate.execute { template.findById<ConcreteDataNodeWithAbstractKotlinBase>(existingId!!) }!!
 
 		assertThat(existingThing.name).isEqualTo("Foo")
 		assertThat(existingThing.anotherProperty).isEqualTo("Bar")
 
-		val thing = transactionTemplate.execute { template.save(ConcreteDataNodeWithAbstractKotlinBase("onBase", "onDependent")) }
+		val thing = transactionTemplate.execute { template.save(ConcreteDataNodeWithAbstractKotlinBase("onBase", "onDependent")) }!!
 		assertThat(thing.id).isNotNull()
 		assertThat(thing.name).isEqualTo("onBase")
 		assertThat(thing.anotherProperty).isEqualTo("onDependent")
@@ -141,12 +141,12 @@ class KotlinInheritanceIT @Autowired constructor(
 					result
 				}
 
-		val existingThing = transactionTemplate.execute { template.findById<ConcreteNodeWithOpenKotlinBase>(existingId!!)!! }
+		val existingThing = transactionTemplate.execute { template.findById<ConcreteNodeWithOpenKotlinBase>(existingId) }!!
 
 		assertThat(existingThing.name).isEqualTo("Foo")
 		assertThat(existingThing.anotherProperty).isEqualTo("Bar")
 
-		val thing = transactionTemplate.execute { template.save(ConcreteNodeWithOpenKotlinBase("onBase", "onDependent")) }
+		val thing = transactionTemplate.execute { template.save(ConcreteNodeWithOpenKotlinBase("onBase", "onDependent")) }!!
 		assertThat(thing.id).isNotNull()
 		assertThat(thing.name).isEqualTo("onBase")
 		assertThat(thing.anotherProperty).isEqualTo("onDependent")
@@ -173,12 +173,12 @@ class KotlinInheritanceIT @Autowired constructor(
 					result
 				}
 
-		val existingThing = transactionTemplate.execute { template.findById<ConcreteDataNodeWithOpenKotlinBase>(existingId!!)!! }
+		val existingThing = transactionTemplate.execute { template.findById<ConcreteDataNodeWithOpenKotlinBase>(existingId) }!!
 
 		assertThat(existingThing.name).isEqualTo("Foo")
 		assertThat(existingThing.anotherProperty).isEqualTo("Bar")
 
-		val thing = transactionTemplate.execute { template.save(ConcreteDataNodeWithOpenKotlinBase("onBase", "onDependent")) }
+		val thing = transactionTemplate.execute { template.save(ConcreteDataNodeWithOpenKotlinBase("onBase", "onDependent")) }!!
 		assertThat(thing.id).isNotNull()
 		assertThat(thing.name).isEqualTo("onBase")
 		assertThat(thing.anotherProperty).isEqualTo("onDependent")
@@ -206,14 +206,14 @@ class KotlinInheritanceIT @Autowired constructor(
 		}
 
 		@Bean
-		override fun transactionManager(driver: Driver?, databaseNameProvider: DatabaseSelectionProvider?): PlatformTransactionManager? {
+		override fun transactionManager(driver: Driver, databaseNameProvider: DatabaseSelectionProvider): PlatformTransactionManager {
 			val bookmarkCapture = bookmarkCapture()
 			return Neo4jTransactionManager(driver, databaseNameProvider, Neo4jBookmarkManager
 					.create(bookmarkCapture, bookmarkCapture))
 		}
 
 		@Bean
-		open fun transactionTemplate(transactionManager: PlatformTransactionManager?): TransactionTemplate? {
+		open fun transactionTemplate(transactionManager: PlatformTransactionManager): TransactionTemplate {
 			return TransactionTemplate(transactionManager)
 		}
 	}
