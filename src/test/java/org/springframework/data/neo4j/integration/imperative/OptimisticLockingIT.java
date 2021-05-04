@@ -48,8 +48,6 @@ import org.springframework.data.neo4j.test.Neo4jExtension;
 import org.springframework.data.neo4j.test.Neo4jIntegrationTest;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * @author Gerrit Meier
@@ -369,11 +367,6 @@ class OptimisticLockingIT {
 		@Bean
 		public BookmarkCapture bookmarkCapture() {
 			return new BookmarkCapture();
-		}
-
-		@Bean
-		public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
-			return new TransactionTemplate(transactionManager);
 		}
 
 		@Override
