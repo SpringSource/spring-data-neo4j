@@ -69,7 +69,7 @@ public abstract class DynamicRelationshipsITBase<T> {
 							+ "CREATE (t) - [:DOGS] -> (w:Pet {name: dog}) " + "RETURN DISTINCT id(t) as id")
 					.single().get("id").asLong();
 			transaction.commit();
-			bookmarkCapture.fastForwardTo(session.lastBookmark());
+			bookmarkCapture.seedWith(session.lastBookmark());
 		}
 	}
 }

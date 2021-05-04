@@ -4128,7 +4128,7 @@ class RepositoryIT {
 			try (Session session = driver.session(Optional.ofNullable(databaseSelection.getValue()).map(SessionConfig::forDatabase)
 					.orElseGet(SessionConfig::defaultConfig))) {
 				T result = sessionConsumer.apply(session);
-				bookmarkCapture.fastForwardTo(session.lastBookmark());
+				bookmarkCapture.seedWith(session.lastBookmark());
 				return result;
 			}
 		}

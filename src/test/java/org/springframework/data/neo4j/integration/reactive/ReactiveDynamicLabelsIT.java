@@ -416,7 +416,7 @@ public class ReactiveDynamicLabelsIT {
 			try (Session session = driver.session();) {
 				session.writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n").consume());
 				existingEntityId = session.writeTransaction(this::createTestEntity);
-				bookmarkCapture.fastForwardTo(session.lastBookmark());
+				bookmarkCapture.seedWith(session.lastBookmark());
 			}
 		}
 

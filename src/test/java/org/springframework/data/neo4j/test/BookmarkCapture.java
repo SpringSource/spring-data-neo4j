@@ -16,6 +16,7 @@
 package org.springframework.data.neo4j.test;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -40,7 +41,7 @@ public final class BookmarkCapture implements Supplier<Set<Bookmark>>, Consumer<
 
 	private Set<Bookmark> latestBookmarks;
 
-	private Bookmark nextBookmark;
+	private final Set<Bookmark> nextBookmarks = new HashSet<>();
 
 	public SessionConfig createSessionConfig() {
 		return createSessionConfig(null);
@@ -59,11 +60,11 @@ public final class BookmarkCapture implements Supplier<Set<Bookmark>>, Consumer<
 		}
 	}
 
-	public void fastForwardTo(Bookmark bookmark) {
+	public void seedWith(Bookmark bookmark) {
 
 		try {
 			write.lock();
-			nextBookmark = bookmark;
+			nextBookmarks.add(bookmark);
 		} finally {
 			write.unlock();
 		}
@@ -74,6 +75,7 @@ public final class BookmarkCapture implements Supplier<Set<Bookmark>>, Consumer<
 		try {
 			write.lock();
 			latestBookmarks = bookmarks;
+			nextBookmarks.clear();
 		} finally {
 			write.unlock();
 		}
@@ -83,7 +85,7 @@ public final class BookmarkCapture implements Supplier<Set<Bookmark>>, Consumer<
 	public Set<Bookmark> get() {
 		try {
 			read.lock();
-			return nextBookmark == null ? Collections.emptySet() : Collections.singleton(nextBookmark);
+			return nextBookmarks;
 		} finally {
 			read.unlock();
 		}
