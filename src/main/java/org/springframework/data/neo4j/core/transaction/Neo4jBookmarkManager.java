@@ -21,11 +21,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apiguardian.api.API;
 import org.neo4j.driver.Bookmark;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 
 /**
@@ -38,13 +38,26 @@ import org.springframework.lang.Nullable;
 @API(status = API.Status.STABLE, since = "6.1.1")
 public final class Neo4jBookmarkManager {
 
+	/**
+	 * @return A default bookmark manager
+	 */
 	public static Neo4jBookmarkManager create() {
-		return new Neo4jBookmarkManager(null, null);
+		return new Neo4jBookmarkManager(null);
 	}
 
-	public static Neo4jBookmarkManager create(@Nullable Supplier<Set<Bookmark>> bookmarksSupplier,
-			@Nullable Consumer<Set<Bookmark>> updatedBookmarksConsumer) {
-		return new Neo4jBookmarkManager(bookmarksSupplier, updatedBookmarksConsumer);
+	/**
+	 * Use this factory method to add supplier of initial "seeding" bookmarks to the transaction managers
+	 * <p>
+	 * While this class will make sure that the supplier will be accessed in a thread-safe manner,
+	 * it us the callers duty to provide thread safe supplier (not changing the seed in during a call etc).
+	 * <p>
+	 *
+	 * @param bookmarksSupplier        A supplier for seeding bookmarks, can be null. The supplier is free to provide different
+	 *                                 bookmarks on each call.
+	 * @return A bookmark manager
+	 */
+	public static Neo4jBookmarkManager create(@Nullable Supplier<Set<Bookmark>> bookmarksSupplier) {
+		return new Neo4jBookmarkManager(bookmarksSupplier);
 	}
 
 	private final Set<Bookmark> bookmarks = new HashSet<>();
@@ -56,10 +69,9 @@ public final class Neo4jBookmarkManager {
 	private final Supplier<Set<Bookmark>> bookmarksSupplier;
 
 	@Nullable
-	private final Consumer<Set<Bookmark>> updatedBookmarksConsumer;
+	private ApplicationEventPublisher applicationEventPublisher;
 
-	private Neo4jBookmarkManager(@Nullable Supplier<Set<Bookmark>> bookmarksSupplier, @Nullable Consumer<Set<Bookmark>> updatedBookmarksConsumer) {
-		this.updatedBookmarksConsumer = updatedBookmarksConsumer;
+	private Neo4jBookmarkManager(@Nullable Supplier<Set<Bookmark>> bookmarksSupplier) {
 		this.bookmarksSupplier = bookmarksSupplier == null ? () -> Collections.emptySet() : bookmarksSupplier;
 	}
 
@@ -80,11 +92,15 @@ public final class Neo4jBookmarkManager {
 			write.lock();
 			bookmarks.removeAll(usedBookmarks);
 			bookmarks.add(lastBookmark);
-			if (updatedBookmarksConsumer != null) {
-				updatedBookmarksConsumer.accept(Collections.unmodifiableSet(new HashSet<>(bookmarks)));
+			if (applicationEventPublisher != null) {
+				applicationEventPublisher.publishEvent(new Neo4jBookmarksUpdatedEvent(new HashSet<>(bookmarks)));
 			}
 		} finally {
 			write.unlock();
 		}
+	}
+
+	void setApplicationEventPublisher(@Nullable ApplicationEventPublisher applicationEventPublisher) {
+		this.applicationEventPublisher = applicationEventPublisher;
 	}
 }

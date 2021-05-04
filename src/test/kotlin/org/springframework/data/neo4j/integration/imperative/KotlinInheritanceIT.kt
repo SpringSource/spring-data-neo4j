@@ -89,7 +89,7 @@ class KotlinInheritanceIT @Autowired constructor(
 		assertThat(thing.name).isEqualTo("onBase")
 		assertThat(thing.anotherProperty).isEqualTo("onDependent")
 
-		val cnt = driver.session().use { session ->
+		val cnt = driver.session(bookmarkCapture.createSessionConfig()).use { session ->
 			session.readTransaction { tx ->
 				tx.run("MATCH (t:AbstractKotlinBase:ConcreteNodeWithAbstractKotlinBase) WHERE id(t) = \$id RETURN count(t)", mapOf("id" to thing.id)).single()[0].asLong()
 			}
@@ -208,8 +208,7 @@ class KotlinInheritanceIT @Autowired constructor(
 		@Bean
 		override fun transactionManager(driver: Driver, databaseNameProvider: DatabaseSelectionProvider): PlatformTransactionManager {
 			val bookmarkCapture = bookmarkCapture()
-			return Neo4jTransactionManager(driver, databaseNameProvider, Neo4jBookmarkManager
-					.create(bookmarkCapture, bookmarkCapture))
+			return Neo4jTransactionManager(driver, databaseNameProvider, Neo4jBookmarkManager.create(bookmarkCapture))
 		}
 
 		@Bean

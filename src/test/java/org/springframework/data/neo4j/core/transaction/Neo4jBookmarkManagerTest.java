@@ -39,8 +39,9 @@ class Neo4jBookmarkManagerTest {
 		BookmarkForTesting bookmark = new BookmarkForTesting(Collections.singleton("a"));
 		AtomicBoolean asserted = new AtomicBoolean(false);
 
-		final Neo4jBookmarkManager bookmarkManager = Neo4jBookmarkManager.create(null, newBookmarks -> {
-			assertThat(newBookmarks).containsExactly(bookmark);
+		final Neo4jBookmarkManager bookmarkManager = Neo4jBookmarkManager.create();
+		bookmarkManager.setApplicationEventPublisher(event -> {
+			assertThat(((Neo4jBookmarksUpdatedEvent) event).getBookmarks()).containsExactly(bookmark);
 			asserted.set(true);
 		});
 
@@ -56,11 +57,11 @@ class Neo4jBookmarkManagerTest {
 		BookmarkForTesting a = new BookmarkForTesting(Collections.singleton("a"));
 		BookmarkForTesting b = new BookmarkForTesting(Collections.singleton("b"));
 
-		final Neo4jBookmarkManager bookmarkManager = Neo4jBookmarkManager
-				.create(() -> Collections.singleton(a), newBookmarks -> {
-					assertThat(newBookmarks).containsExactly(b);
-					asserted.set(true);
-				});
+		final Neo4jBookmarkManager bookmarkManager = Neo4jBookmarkManager.create(() -> Collections.singleton(a));
+		bookmarkManager.setApplicationEventPublisher(event -> {
+			assertThat(((Neo4jBookmarksUpdatedEvent) event).getBookmarks()).containsExactly(b);
+			asserted.set(true);
+		});
 
 		Collection<Bookmark> bookmarks = bookmarkManager.getBookmarks();
 		assertThat(bookmarks).containsExactlyInAnyOrder(a);
