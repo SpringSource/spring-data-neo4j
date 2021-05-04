@@ -35,6 +35,7 @@ import org.springframework.data.neo4j.test.Neo4jExtension
 import org.springframework.data.neo4j.test.Neo4jIntegrationTest
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.EnableTransactionManagement
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * This test originate from https://github.com/neo4j/SDN/issues/102.
@@ -61,8 +62,8 @@ class ImmutableRelationshipsIT @Autowired constructor(
     fun createRelationshipsBeforeRootObject() {
 
         driver.session(bookmarkCapture.createSessionConfig()).use { session ->
-            session.run("MATCH (n) DETACH DELETE n")
-            session.run("CREATE (n:DeviceEntity {deviceId:'123', phoneNumber:'some number'})-[:LATEST_LOCATION]->(l1: LocationEntity{latitude: 20.0, longitude: 20.0})")
+            session.run("MATCH (n) DETACH DELETE n").consume()
+            session.run("CREATE (n:DeviceEntity {deviceId:'123', phoneNumber:'some number'})-[:LATEST_LOCATION]->(l1: LocationEntity{latitude: 20.0, longitude: 20.0})").consume()
             bookmarkCapture.seedWith(session.lastBookmark())
         }
 
@@ -78,12 +79,12 @@ class ImmutableRelationshipsIT @Autowired constructor(
     fun createDeepSameClassRelationshipsBeforeRootObject() {
 
         driver.session(bookmarkCapture.createSessionConfig()).use { session ->
-            session.run("MATCH (n) DETACH DELETE n")
+            session.run("MATCH (n) DETACH DELETE n").consume()
             session.run("CREATE (n:DeviceEntity {deviceId:'123', phoneNumber:'some number'})" +
                     "-[:LATEST_LOCATION]->" +
                     "(l1: LocationEntity{latitude: 10.0, longitude: 20.0})" +
                     "-[:PREVIOUS_LOCATION]->" +
-                    "(l2: LocationEntity{latitude: 30.0, longitude: 40.0})")
+                    "(l2: LocationEntity{latitude: 30.0, longitude: 40.0})").consume()
             bookmarkCapture.seedWith(session.lastBookmark())
         }
         val device = repository.findById("123").get()
@@ -100,7 +101,7 @@ class ImmutableRelationshipsIT @Autowired constructor(
     fun createComplexSameClassRelationshipsBeforeRootObject() {
 
         driver.session(bookmarkCapture.createSessionConfig()).use { session ->
-            session.run("MATCH (n) DETACH DELETE n")
+            session.run("MATCH (n) DETACH DELETE n").consume()
             bookmarkCapture.seedWith(session.lastBookmark())
         }
 

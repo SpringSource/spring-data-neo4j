@@ -60,7 +60,7 @@ class KotlinInheritanceIT @Autowired constructor(
 		@JvmStatic
 		fun clearDatabase(@Autowired driver: Driver, @Autowired bookmarkCapture: BookmarkCapture) {
 			driver.session().use { session ->
-				session.run("MATCH (n) DETACH DELETE n")
+				session.run("MATCH (n) DETACH DELETE n").consume()
 				bookmarkCapture.seedWith(session.lastBookmark())
 			}
 		}
