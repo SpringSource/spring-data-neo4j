@@ -23,9 +23,6 @@ import org.neo4j.driver.Driver;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.reactive.RxSession;
 import org.neo4j.driver.reactive.RxTransaction;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.data.neo4j.core.DatabaseSelection;
 import org.springframework.data.neo4j.core.ReactiveDatabaseSelectionProvider;
 import org.springframework.lang.Nullable;
@@ -45,9 +42,7 @@ import org.springframework.util.Assert;
  * @since 6.0
  */
 @API(status = API.Status.STABLE, since = "6.0")
-public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTransactionManager implements ApplicationContextAware {
-
-	public final static String CONTEXT_KEY_LAST_BOOKMARKS = "SDN_LAST_BOOKMARKS";
+public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTransactionManager {
 
 	/**
 	 * The underlying driver, which is also the synchronisation object.
@@ -67,9 +62,13 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 
 	public ReactiveNeo4jTransactionManager(Driver driver, ReactiveDatabaseSelectionProvider databaseSelectionProvider) {
 
+		this(driver, databaseSelectionProvider, Neo4jBookmarkManager.create());
+	}
+
+	public ReactiveNeo4jTransactionManager(Driver driver, ReactiveDatabaseSelectionProvider databaseSelectionProvider, Neo4jBookmarkManager bookmarkManager) {
 		this.driver = driver;
 		this.databaseSelectionProvider = databaseSelectionProvider;
-		this.bookmarkManager = new Neo4jBookmarkManager();
+		this.bookmarkManager = bookmarkManager;
 	}
 
 	public static Mono<RxTransaction> retrieveReactiveTransaction(final Driver driver, final String targetDatabase) {
@@ -148,7 +147,7 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 	protected Mono<Void> doBegin(TransactionSynchronizationManager transactionSynchronizationManager, Object transaction,
 			TransactionDefinition transactionDefinition) throws TransactionException {
 
-		return Mono.deferContextual(ctx -> {
+		return Mono.defer(() -> {
 			ReactiveNeo4jTransactionObject transactionObject = extractNeo4jTransaction(transaction);
 
 			TransactionConfig transactionConfig = Neo4jTransactionUtils.createTransactionConfigFrom(transactionDefinition);
@@ -156,9 +155,9 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 
 			transactionSynchronizationManager.setCurrentTransactionReadOnly(readOnly);
 
-			return databaseSelectionProvider.getDatabaseSelection()
-					.switchIfEmpty(Mono.just(DatabaseSelection.undecided()))
-					.map(databaseName -> new Neo4jTransactionContext(databaseName.getValue(), ctx.getOrDefault(CONTEXT_KEY_LAST_BOOKMARKS, bookmarkManager.getBookmarks())))
+			return databaseSelectionProvider.getDatabaseSelection().switchIfEmpty(Mono.just(DatabaseSelection.undecided()))
+					.map(
+							databaseName -> new Neo4jTransactionContext(databaseName.getValue(), bookmarkManager.getBookmarks()))
 					.map(
 							context -> Tuples
 									.of(context,
@@ -186,12 +185,6 @@ public final class ReactiveNeo4jTransactionManager extends AbstractReactiveTrans
 			return holder;
 		}).flatMap(ReactiveNeo4jTransactionHolder::close)
 				.then(Mono.fromRunnable(() -> transactionSynchronizationManager.unbindResource(driver)));
-	}
-
-	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-
-		this.bookmarkManager.setApplicationEventPublisher(applicationContext);
 	}
 
 	@Override

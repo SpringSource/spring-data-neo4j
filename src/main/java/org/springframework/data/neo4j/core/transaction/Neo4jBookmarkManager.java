@@ -21,9 +21,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import org.apiguardian.api.API;
 import org.neo4j.driver.Bookmark;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.Nullable;
 
 /**
@@ -33,7 +35,17 @@ import org.springframework.lang.Nullable;
  * @soundtrack Metallica - Death Magnetic
  * @since 6.0
  */
-final class Neo4jBookmarkManager {
+@API(status = API.Status.STABLE, since = "6.1.1")
+public final class Neo4jBookmarkManager {
+
+	public static Neo4jBookmarkManager create() {
+		return new Neo4jBookmarkManager(null, null);
+	}
+
+	public static Neo4jBookmarkManager create(@Nullable Supplier<Set<Bookmark>> bookmarksSupplier,
+			@Nullable Consumer<Set<Bookmark>> updatedBookmarksConsumer) {
+		return new Neo4jBookmarkManager(bookmarksSupplier, updatedBookmarksConsumer);
+	}
 
 	private final Set<Bookmark> bookmarks = new HashSet<>();
 
@@ -41,35 +53,38 @@ final class Neo4jBookmarkManager {
 	private final Lock read = lock.readLock();
 	private final Lock write = lock.writeLock();
 
+	private final Supplier<Set<Bookmark>> bookmarksSupplier;
+
 	@Nullable
-	private ApplicationEventPublisher applicationEventPublisher;
+	private final Consumer<Set<Bookmark>> updatedBookmarksConsumer;
+
+	private Neo4jBookmarkManager(@Nullable Supplier<Set<Bookmark>> bookmarksSupplier, @Nullable Consumer<Set<Bookmark>> updatedBookmarksConsumer) {
+		this.updatedBookmarksConsumer = updatedBookmarksConsumer;
+		this.bookmarksSupplier = bookmarksSupplier == null ? () -> Collections.emptySet() : bookmarksSupplier;
+	}
 
 	Collection<Bookmark> getBookmarks() {
 
 		try {
 			read.lock();
-			return Collections.unmodifiableSet(new HashSet<>(bookmarks));
+			HashSet<Bookmark> bookmarksToUse = new HashSet<>(this.bookmarks);
+			bookmarksToUse.addAll(bookmarksSupplier.get());
+			return Collections.unmodifiableSet(bookmarksToUse);
 		} finally {
 			read.unlock();
 		}
 	}
 
 	void updateBookmarks(Collection<Bookmark> usedBookmarks, Bookmark lastBookmark) {
-
 		try {
 			write.lock();
 			bookmarks.removeAll(usedBookmarks);
 			bookmarks.add(lastBookmark);
+			if (updatedBookmarksConsumer != null) {
+				updatedBookmarksConsumer.accept(Collections.unmodifiableSet(new HashSet<>(bookmarks)));
+			}
 		} finally {
 			write.unlock();
 		}
-
-		if (applicationEventPublisher != null) {
-			applicationEventPublisher.publishEvent(new Neo4jBookmarksUpdatedEvent(new HashSet<>(bookmarks)));
-		}
-	}
-
-	void setApplicationEventPublisher(@Nullable ApplicationEventPublisher applicationEventPublisher) {
-		this.applicationEventPublisher = applicationEventPublisher;
 	}
 }

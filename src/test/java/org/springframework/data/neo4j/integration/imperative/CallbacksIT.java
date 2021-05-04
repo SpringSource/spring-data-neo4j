@@ -46,8 +46,7 @@ class CallbacksIT extends CallbacksITBase {
 	@Test
 	void onBeforeBindShouldBeCalledForSingleEntity(@Autowired ThingRepository repository) {
 
-		ThingWithAssignedId thing = new ThingWithAssignedId("aaBB");
-		thing.setName("A name");
+		ThingWithAssignedId thing = new ThingWithAssignedId("aaBB", "A name");
 		thing = repository.save(thing);
 
 		assertThat(thing.getName()).isEqualTo("A name (Edited)");
@@ -58,10 +57,8 @@ class CallbacksIT extends CallbacksITBase {
 	@Test
 	void onBeforeBindShouldBeCalledForAllEntities(@Autowired ThingRepository repository) {
 
-		ThingWithAssignedId thing1 = new ThingWithAssignedId("id1");
-		thing1.setName("A name");
-		ThingWithAssignedId thing2 = new ThingWithAssignedId("id2");
-		thing2.setName("Another name");
+		ThingWithAssignedId thing1 = new ThingWithAssignedId("id1", "A name");
+		ThingWithAssignedId thing2 = new ThingWithAssignedId("id2", "Another name");
 		Iterable<ThingWithAssignedId> savedThings = repository.saveAll(Arrays.asList(thing1, thing2));
 
 		assertThat(savedThings).extracting(ThingWithAssignedId::getName).containsExactlyInAnyOrder("A name (Edited)",
@@ -78,8 +75,7 @@ class CallbacksIT extends CallbacksITBase {
 		@Bean
 		BeforeBindCallback<ThingWithAssignedId> nameChanger() {
 			return entity -> {
-				ThingWithAssignedId updatedThing = new ThingWithAssignedId(entity.getTheId());
-				updatedThing.setName(entity.getName() + " (Edited)");
+				ThingWithAssignedId updatedThing = new ThingWithAssignedId(entity.getTheId(), entity.getName() + " (Edited)");
 				return updatedThing;
 			};
 		}

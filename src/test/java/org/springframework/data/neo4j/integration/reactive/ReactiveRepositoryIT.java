@@ -69,6 +69,8 @@ import org.springframework.data.neo4j.config.AbstractReactiveNeo4jConfig;
 import org.springframework.data.neo4j.core.DatabaseSelection;
 import org.springframework.data.neo4j.core.ReactiveDatabaseSelectionProvider;
 import org.springframework.data.neo4j.core.ReactiveNeo4jTemplate;
+import org.springframework.data.neo4j.core.transaction.Neo4jBookmarkManager;
+import org.springframework.data.neo4j.core.transaction.ReactiveNeo4jTransactionManager;
 import org.springframework.data.neo4j.integration.reactive.repositories.ReactivePersonRepository;
 import org.springframework.data.neo4j.integration.reactive.repositories.ReactiveThingRepository;
 import org.springframework.data.neo4j.integration.shared.common.AltHobby;
@@ -102,7 +104,6 @@ import org.springframework.data.neo4j.repository.ReactiveNeo4jRepository;
 import org.springframework.data.neo4j.repository.config.EnableReactiveNeo4jRepositories;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.neo4j.test.BookmarkCapture;
-import org.springframework.data.neo4j.test.BookmarkUtils;
 import org.springframework.data.neo4j.test.Neo4jExtension;
 import org.springframework.data.neo4j.types.CartesianPoint2d;
 import org.springframework.data.neo4j.types.GeographicPoint2d;
@@ -1474,8 +1475,7 @@ class ReactiveRepositoryIT {
 		void saveWithAssignedId(@Autowired ReactiveThingRepository repository) {
 
 			Mono<ThingWithAssignedId> operationUnderTest = Mono.fromSupplier(() -> {
-				ThingWithAssignedId thing = new ThingWithAssignedId("aaBB");
-				thing.setName("That's the thing.");
+				ThingWithAssignedId thing = new ThingWithAssignedId("aaBB", "That's the thing.");
 				return thing;
 			}).flatMap(repository::save);
 
@@ -1497,8 +1497,7 @@ class ReactiveRepositoryIT {
 				existingThing.setName("Updated name.");
 				return existingThing;
 			}).concatWith(Mono.fromSupplier(() -> {
-				ThingWithAssignedId newThing = new ThingWithAssignedId("aaBB");
-				newThing.setName("That's the thing.");
+				ThingWithAssignedId newThing = new ThingWithAssignedId("aaBB", "That's the thing.");
 				return newThing;
 			}));
 
@@ -1521,10 +1520,8 @@ class ReactiveRepositoryIT {
 		@Test
 		void saveAllIterableWithAssignedId(@Autowired ReactiveThingRepository repository) {
 
-			ThingWithAssignedId existingThing = new ThingWithAssignedId("anId");
-			existingThing.setName("Updated name.");
-			ThingWithAssignedId newThing = new ThingWithAssignedId("aaBB");
-			newThing.setName("That's the thing.");
+			ThingWithAssignedId existingThing = new ThingWithAssignedId("anId", "Updated name.");
+			ThingWithAssignedId newThing = new ThingWithAssignedId("aaBB", "That's the thing.");
 
 			List<ThingWithAssignedId> things = Arrays.asList(existingThing, newThing);
 
@@ -1550,8 +1547,7 @@ class ReactiveRepositoryIT {
 			Flux<ThingWithAssignedId> operationUnderTest = Flux.concat(
 					// Without prior selection
 					Mono.fromSupplier(() -> {
-						ThingWithAssignedId thing = new ThingWithAssignedId("id07");
-						thing.setName("An updated thing");
+						ThingWithAssignedId thing = new ThingWithAssignedId("id07", "An updated thing");
 						return thing;
 					}).flatMap(repository::save),
 
@@ -2556,7 +2552,7 @@ class ReactiveRepositoryIT {
 			try (Session session = driver.session(Optional.ofNullable(databaseSelection.getValue()).map(SessionConfig::forDatabase)
 					.orElseGet(SessionConfig::defaultConfig))) {
 				T result = sessionConsumer.apply(session);
-				BookmarkUtils.fastForwardTo(transactionalOperator, session.lastBookmark());
+				bookmarkCapture.fastForwardTo(session.lastBookmark());
 				return result;
 			}
 		}
@@ -2578,7 +2574,7 @@ class ReactiveRepositoryIT {
 		}
 	}
 
-	@Configuration(proxyBeanMethods = false)
+	@Configuration
 	@EnableReactiveNeo4jRepositories(considerNestedRepositories = true)
 	@EnableTransactionManagement
 	static class Config extends AbstractReactiveNeo4jConfig {
@@ -2596,6 +2592,13 @@ class ReactiveRepositoryIT {
 		@Bean
 		public BookmarkCapture bookmarkCapture() {
 			return new BookmarkCapture();
+		}
+
+		@Override
+		public ReactiveTransactionManager reactiveTransactionManager(Driver driver, ReactiveDatabaseSelectionProvider databaseNameProvider) {
+
+			BookmarkCapture bookmarkCapture = bookmarkCapture();
+			return new ReactiveNeo4jTransactionManager(driver, databaseNameProvider, Neo4jBookmarkManager.create(bookmarkCapture, bookmarkCapture));
 		}
 
 		@Bean

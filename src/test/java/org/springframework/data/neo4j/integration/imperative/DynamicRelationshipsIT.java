@@ -31,6 +31,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.neo4j.config.AbstractNeo4jConfig;
+import org.springframework.data.neo4j.core.DatabaseSelectionProvider;
+import org.springframework.data.neo4j.core.transaction.Neo4jBookmarkManager;
+import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
 import org.springframework.data.neo4j.integration.shared.common.Club;
 import org.springframework.data.neo4j.integration.shared.common.ClubRelationship;
 import org.springframework.data.neo4j.integration.shared.common.DynamicRelationshipsITBase;
@@ -46,13 +49,11 @@ import org.springframework.data.neo4j.integration.shared.common.Pet;
 import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.neo4j.test.BookmarkCapture;
-import org.springframework.data.neo4j.test.BookmarkUtils;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * @author Michael J. Simons
@@ -60,8 +61,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 class DynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithRelatives> {
 
 	@Autowired
-	DynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture, TransactionTemplate transactionTemplate) {
-		super(driver, bookmarkCapture, b -> BookmarkUtils.fastForwardTo(transactionTemplate, b));
+	DynamicRelationshipsIT(Driver driver, BookmarkCapture bookmarkCapture) {
+		super(driver, bookmarkCapture);
 	}
 
 	@Test
@@ -317,7 +318,7 @@ class DynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithRelati
 
 	}
 
-	@Configuration(proxyBeanMethods = false)
+	@Configuration
 	@EnableTransactionManagement
 	@EnableNeo4jRepositories(considerNestedRepositories = true)
 	static class Config extends AbstractNeo4jConfig {
@@ -332,9 +333,11 @@ class DynamicRelationshipsIT extends DynamicRelationshipsITBase<PersonWithRelati
 			return new BookmarkCapture();
 		}
 
-		@Bean
-		public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
-			return new TransactionTemplate(transactionManager);
+		@Override
+		public PlatformTransactionManager transactionManager(Driver driver, DatabaseSelectionProvider databaseNameProvider) {
+
+			BookmarkCapture bookmarkCapture = bookmarkCapture();
+			return new Neo4jTransactionManager(driver, databaseNameProvider, Neo4jBookmarkManager.create(bookmarkCapture, bookmarkCapture));
 		}
 	}
 }

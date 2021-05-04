@@ -44,7 +44,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.neo4j.config.AbstractNeo4jConfig;
+import org.springframework.data.neo4j.core.DatabaseSelectionProvider;
 import org.springframework.data.neo4j.core.Neo4jTemplate;
+import org.springframework.data.neo4j.core.transaction.Neo4jBookmarkManager;
+import org.springframework.data.neo4j.core.transaction.Neo4jTransactionManager;
 import org.springframework.data.neo4j.integration.shared.common.EntitiesWithDynamicLabels.DynamicLabelsWithMultipleNodeLabels;
 import org.springframework.data.neo4j.integration.shared.common.EntitiesWithDynamicLabels.DynamicLabelsWithNodeLabel;
 import org.springframework.data.neo4j.integration.shared.common.EntitiesWithDynamicLabels.ExtendedBaseClass1;
@@ -57,6 +60,7 @@ import org.springframework.data.neo4j.integration.shared.common.EntitiesWithDyna
 import org.springframework.data.neo4j.integration.shared.common.EntitiesWithDynamicLabels.SuperNode;
 import org.springframework.data.neo4j.test.BookmarkCapture;
 import org.springframework.data.neo4j.test.Neo4jExtension;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -415,6 +419,7 @@ public class DynamicLabelsIT {
 
 	@ExtendWith(SpringExtension.class)
 	@ContextConfiguration(classes = SpringTestBase.Config.class)
+	@DirtiesContext
 	abstract static class SpringTestBase {
 
 		@Autowired protected Driver driver;
@@ -439,9 +444,10 @@ public class DynamicLabelsIT {
 
 		@BeforeEach
 		void setupData() {
-			try (Session session = driver.session();) {
+			try (Session session = driver.session()) {
 				session.writeTransaction(tx -> tx.run("MATCH (n) DETACH DELETE n").consume());
 				existingEntityId = session.writeTransaction(this::createTestEntity);
+				bookmarkCapture.fastForwardTo(session.lastBookmark());
 			}
 		}
 
@@ -461,7 +467,7 @@ public class DynamicLabelsIT {
 			}
 		}
 
-		@Configuration(proxyBeanMethods = false)
+		@Configuration
 		@EnableTransactionManagement
 		static class Config extends AbstractNeo4jConfig {
 
@@ -471,13 +477,21 @@ public class DynamicLabelsIT {
 			}
 
 			@Bean
-			public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
-				return new TransactionTemplate(transactionManager);
+			public BookmarkCapture bookmarkCapture() {
+				return new BookmarkCapture();
+			}
+
+			@Override
+			public PlatformTransactionManager transactionManager(Driver driver, DatabaseSelectionProvider databaseNameProvider) {
+
+				BookmarkCapture bookmarkCapture = bookmarkCapture();
+				return new Neo4jTransactionManager(driver, databaseNameProvider, Neo4jBookmarkManager
+						.create(bookmarkCapture, bookmarkCapture));
 			}
 
 			@Bean
-			public BookmarkCapture bookmarkCapture() {
-				return new BookmarkCapture();
+			public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+				return new TransactionTemplate(transactionManager);
 			}
 		}
 	}

@@ -15,17 +15,12 @@
  */
 package org.springframework.data.neo4j.core.transaction;
 
-import java.util.Collection;
-
 import org.apiguardian.api.API;
 import org.neo4j.driver.Bookmark;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.Transaction;
 import org.neo4j.driver.TransactionConfig;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.data.neo4j.core.DatabaseSelectionProvider;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.lang.Nullable;
@@ -47,9 +42,7 @@ import org.springframework.util.Assert;
  * @since 6.0
  */
 @API(status = API.Status.STABLE, since = "6.0")
-public final class Neo4jTransactionManager extends AbstractPlatformTransactionManager implements ApplicationContextAware {
-
-	public final static String RESOURCE_KEY_LAST_BOOKMARKS = "SDN_LAST_BOOKMARKS";
+public final class Neo4jTransactionManager extends AbstractPlatformTransactionManager {
 
 	/**
 	 * The underlying driver, which is also the synchronisation object.
@@ -70,9 +63,14 @@ public final class Neo4jTransactionManager extends AbstractPlatformTransactionMa
 
 	public Neo4jTransactionManager(Driver driver, DatabaseSelectionProvider databaseSelectionProvider) {
 
+		this(driver, databaseSelectionProvider, Neo4jBookmarkManager.create());
+	}
+
+	public Neo4jTransactionManager(Driver driver, DatabaseSelectionProvider databaseSelectionProvider, Neo4jBookmarkManager bookmarkManager) {
+
 		this.driver = driver;
 		this.databaseSelectionProvider = databaseSelectionProvider;
-		this.bookmarkManager = new Neo4jBookmarkManager();
+		this.bookmarkManager = bookmarkManager;
 	}
 
 	/**
@@ -161,11 +159,9 @@ public final class Neo4jTransactionManager extends AbstractPlatformTransactionMa
 		TransactionSynchronizationManager.setCurrentTransactionReadOnly(readOnly);
 
 		try {
-			Collection<Bookmark> bookmarks = (Collection<Bookmark>) TransactionSynchronizationManager.unbindResourceIfPossible(RESOURCE_KEY_LAST_BOOKMARKS);
-
 			// Prepare configuration data
 			Neo4jTransactionContext context = new Neo4jTransactionContext(
-					databaseSelectionProvider.getDatabaseSelection().getValue(), bookmarks != null ? bookmarks : bookmarkManager.getBookmarks());
+					databaseSelectionProvider.getDatabaseSelection().getValue(), bookmarkManager.getBookmarks());
 
 			// Configure and open session together with a native transaction
 			Session session = this.driver.session(
@@ -232,12 +228,6 @@ public final class Neo4jTransactionManager extends AbstractPlatformTransactionMa
 		transactionObject.getRequiredResourceHolder().close();
 		transactionObject.setResourceHolder(null);
 		TransactionSynchronizationManager.unbindResource(driver);
-	}
-
-	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-
-		this.bookmarkManager.setApplicationEventPublisher(applicationContext);
 	}
 
 	static class Neo4jTransactionObject implements SmartTransactionObject {

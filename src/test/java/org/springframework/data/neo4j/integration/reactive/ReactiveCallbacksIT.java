@@ -60,8 +60,7 @@ class ReactiveCallbacksIT extends CallbacksITBase {
 	@Test
 	void onBeforeBindShouldBeCalledForSingleEntity(@Autowired ReactiveThingRepository repository) {
 
-		ThingWithAssignedId thing = new ThingWithAssignedId("aaBB");
-		thing.setName("A name");
+		ThingWithAssignedId thing = new ThingWithAssignedId("aaBB", "A name");
 
 		Mono<ThingWithAssignedId> operationUnderTest = Mono.just(thing).flatMap(repository::save);
 
@@ -76,10 +75,8 @@ class ReactiveCallbacksIT extends CallbacksITBase {
 	@Test
 	void onBeforeBindShouldBeCalledForAllEntitiesUsingIterable(@Autowired ReactiveThingRepository repository) {
 
-		ThingWithAssignedId thing1 = new ThingWithAssignedId("id1");
-		thing1.setName("A name");
-		ThingWithAssignedId thing2 = new ThingWithAssignedId("id2");
-		thing2.setName("Another name");
+		ThingWithAssignedId thing1 = new ThingWithAssignedId("id1", "A name");
+		ThingWithAssignedId thing2 = new ThingWithAssignedId("id2", "Another name");
 		repository.saveAll(Arrays.asList(thing1, thing2));
 
 		Flux<ThingWithAssignedId> operationUnderTest = repository.saveAll(Arrays.asList(thing1, thing2));
@@ -96,10 +93,8 @@ class ReactiveCallbacksIT extends CallbacksITBase {
 	@Test
 	void onBeforeBindShouldBeCalledForAllEntitiesUsingPublisher(@Autowired ReactiveThingRepository repository) {
 
-		ThingWithAssignedId thing1 = new ThingWithAssignedId("id1");
-		thing1.setName("A name");
-		ThingWithAssignedId thing2 = new ThingWithAssignedId("id2");
-		thing2.setName("Another name");
+		ThingWithAssignedId thing1 = new ThingWithAssignedId("id1", "A name");
+		ThingWithAssignedId thing2 = new ThingWithAssignedId("id2", "Another name");
 		repository.saveAll(Arrays.asList(thing1, thing2));
 
 		Flux<ThingWithAssignedId> operationUnderTest = repository.saveAll(Flux.just(thing1, thing2));
@@ -121,8 +116,7 @@ class ReactiveCallbacksIT extends CallbacksITBase {
 		@Bean
 		ReactiveBeforeBindCallback<ThingWithAssignedId> nameChanger() {
 			return entity -> {
-				ThingWithAssignedId updatedThing = new ThingWithAssignedId(entity.getTheId());
-				updatedThing.setName(entity.getName() + " (Edited)");
+				ThingWithAssignedId updatedThing = new ThingWithAssignedId(entity.getTheId(), entity.getName() + " (Edited)");
 				return Mono.just(updatedThing);
 			};
 		}

@@ -19,26 +19,28 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.neo4j.driver.Bookmark;
 import org.neo4j.driver.SessionConfig;
-import org.springframework.context.ApplicationListener;
-import org.springframework.data.neo4j.core.transaction.Neo4jBookmarksUpdatedEvent;
 
 /**
  * This is a utility class that captures the most recent bookmarks after any of the Spring Data Neo4j transaction managers
- * commits a transaction leading to a {@link Neo4jBookmarksUpdatedEvent}.
+ * commits a transaction. It also can preload the bookmarks;
  *
  * @author Michael J. Simons
  * @soundtrack Black Sabbath - Master Of Reality
  */
-public final class BookmarkCapture implements ApplicationListener<Neo4jBookmarksUpdatedEvent> {
+public final class BookmarkCapture implements Supplier<Set<Bookmark>>, Consumer<Set<Bookmark>> {
 
 	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 	private final Lock read = lock.readLock();
 	private final Lock write = lock.writeLock();
 
 	private Set<Bookmark> latestBookmarks;
+
+	private Bookmark nextBookmark;
 
 	public SessionConfig createSessionConfig() {
 		return createSessionConfig(null);
@@ -57,13 +59,33 @@ public final class BookmarkCapture implements ApplicationListener<Neo4jBookmarks
 		}
 	}
 
-	@Override
-	public void onApplicationEvent(Neo4jBookmarksUpdatedEvent event) {
+	public void fastForwardTo(Bookmark bookmark) {
+
 		try {
 			write.lock();
-			latestBookmarks = event.getBookmarks();
+			nextBookmark = bookmark;
 		} finally {
 			write.unlock();
+		}
+	}
+
+	@Override
+	public void accept(Set<Bookmark> bookmarks) {
+		try {
+			write.lock();
+			latestBookmarks = bookmarks;
+		} finally {
+			write.unlock();
+		}
+	}
+
+	@Override
+	public Set<Bookmark> get() {
+		try {
+			read.lock();
+			return nextBookmark == null ? Collections.emptySet() : Collections.singleton(nextBookmark);
+		} finally {
+			read.unlock();
 		}
 	}
 }
