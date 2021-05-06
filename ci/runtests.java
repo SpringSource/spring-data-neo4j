@@ -119,13 +119,18 @@ public class runtests {
 			}
 
 			var failuresByState = failures.stream().collect(partitioningBy(failure -> {
-				var ex = failure.getException();
-				do {
-					if (canRetry.test(ex)) {
-						return true;
-					}
-					ex = ex.getCause();
-				} while (ex != null);
+				var ex = new Throwable[] { failure.getException() };
+				if (ex[0] instanceof AssertionError) {
+					ex = ((AssertionError) ex[0]).getSuppressed();
+				}
+				for (var candidate : ex) {
+					do {
+						if (canRetry.test(candidate)) {
+							return true;
+						}
+						candidate = candidate.getCause();
+					} while (candidate != null);
+				}
 				return false;
 			}));
 
