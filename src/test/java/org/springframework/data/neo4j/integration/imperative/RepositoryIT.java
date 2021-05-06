@@ -147,6 +147,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -3971,6 +3972,7 @@ class RepositoryIT {
 
 		PersonWithRelationship findByPetsFriendsName(String petName);
 
+		@Transactional
 		@Query("CREATE (n:PersonWithRelationship) \n"
 			   + "SET n.name = $0.__properties__.name  \n"
 			   + "WITH n, id(n) as parentId\n"
