@@ -17,7 +17,6 @@ package org.springframework.data.neo4j.integration.imperative;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
@@ -30,7 +29,6 @@ import org.springframework.data.neo4j.test.Neo4jExtension;
 @Tag(Neo4jExtension.COMMERCIAL_EDITION_ONLY)
 @Tag(Neo4jExtension.REQUIRES + "4.0.0")
 @Tag(Neo4jExtension.INCOMPATIBLE_WITH_AURA)
-@Disabled
 class RepositoryWithADifferentDatabaseIT extends RepositoryIT {
 
 	private static final String TEST_DATABASE_NAME = "aTestDatabase";
