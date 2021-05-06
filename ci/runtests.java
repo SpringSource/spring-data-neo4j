@@ -111,14 +111,23 @@ public class runtests {
 
 			launcher.execute(request);
 
-			var summary = listener.getSummary();
-			var failures = summary.getFailures();
+			var failures = listener.getSummary().getFailures();
 
 			if (failures.isEmpty()) {
 				System.exit(0);
 			}
 
-			var failuresByState = failures.stream().collect(partitioningBy(failure -> canRetry.test(failure.getException())));
+			var failuresByState = failures.stream().collect(partitioningBy(failure -> {
+				var ex = failure.getException();
+				do {
+					if (canRetry.test(ex)) {
+						return true;
+					}
+					ex = ex.getCause();
+				} while (ex != null);
+				return false;
+			}));
+
 			if (!failuresByState.get(false).isEmpty()) {
 				log.error("The following tests failed in non retryable ways:");
 				failuresByState.get(false)
