@@ -130,8 +130,10 @@ public class runtests {
 
 			if (!failuresByState.get(false).isEmpty()) {
 				log.error("The following tests failed in non retryable ways:");
-				failuresByState.get(false)
-						.forEach(failure -> failure.getException().printStackTrace());
+				failuresByState.get(false).forEach(failure -> {
+					log.error(failure.getTestIdentifier().getUniqueId());
+					failure.getException().printStackTrace();
+				});
 				System.exit(1);
 			}
 
