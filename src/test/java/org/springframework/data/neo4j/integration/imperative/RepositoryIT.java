@@ -52,7 +52,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.Session;
-import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.Transaction;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
@@ -4125,8 +4124,7 @@ class RepositoryIT {
 		}
 
 		<T> T doWithSession(Function<Session, T> sessionConsumer) {
-			try (Session session = driver.session(Optional.ofNullable(databaseSelection.getValue()).map(SessionConfig::forDatabase)
-					.orElseGet(SessionConfig::defaultConfig))) {
+			try (Session session = driver.session(bookmarkCapture.createSessionConfig(databaseSelection.getValue()))) {
 				T result = sessionConsumer.apply(session);
 				bookmarkCapture.seedWith(session.lastBookmark());
 				return result;
