@@ -26,9 +26,9 @@
     <logger name="org.springframework.data.neo4j.core.mapping.DefaultNeo4jIsNewStrategy" level="error" />
     <logger name="org.springframework.data.neo4j.repository.query.Neo4jQuerySupport" level="error" />
     
-    <logger name="org.springframework.data.neo4j.test" level="info"/>
+    <logger name="org.springframework.data.neo4j.test" level="warn"/>
 
-    <logger name="runtests" level="debug"/>
+    <logger name="runtests" level="info"/>
 
     <root level="warn">
         <appender-ref ref="console"/>

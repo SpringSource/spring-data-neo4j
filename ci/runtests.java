@@ -138,6 +138,7 @@ public class runtests {
 			}
 
 			selectors = failuresByState.get(true).stream()
+					.peek(failure -> log.info("{} will be retried", failure.getTestIdentifier().getUniqueId()))
 					.map(failure -> DiscoverySelectors.selectUniqueId(failure.getTestIdentifier().getUniqueId()))
 					.collect(toList());
 		}

@@ -100,10 +100,10 @@ public class Neo4jExtension implements BeforeAllCallback, BeforeEachCallback {
 
 		if (neo4jConnectionSupport == null) {
 			if (!(neo4jUrl.isEmpty() || neo4jPassword.isEmpty())) {
-				log.warn(LogMessage.format("Using Neo4j instance at %s.", neo4jUrl));
+				log.info(LogMessage.format("Using Neo4j instance at %s.", neo4jUrl));
 				neo4jConnectionSupport = new Neo4jConnectionSupport(neo4jUrl, AuthTokens.basic("neo4j", neo4jPassword));
 			} else {
-				log.warn("Using Neo4j test container.");
+				log.info("Using Neo4j test container.");
 				ContainerAdapter adapter = contextStore.getOrComputeIfAbsent(KEY_NEO4J_INSTANCE,
 						key -> new Neo4jExtension.ContainerAdapter(), ContainerAdapter.class);
 				adapter.start();
