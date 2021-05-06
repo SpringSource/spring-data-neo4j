@@ -66,6 +66,7 @@ import org.junit.platform.launcher.core.LauncherConfig;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
+import org.neo4j.driver.internal.retry.ExponentialBackoffRetryLogic;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.neo4j.core.support.RetryExceptionPredicate;
 
@@ -93,7 +94,7 @@ public class runtests {
 						})
 						.addTestExecutionListeners(listener).build());
 
-		var canRetry = new RetryExceptionPredicate();
+		var canRetry = new RetryExceptionPredicate().or(ExponentialBackoffRetryLogic::isRetryable);
 
 		var selectors = List.<DiscoverySelector>of(selectPackage("org.springframework.data.neo4j.integration"));
 		var maxRetries = 100;
