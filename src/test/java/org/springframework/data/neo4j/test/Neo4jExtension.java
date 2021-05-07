@@ -64,7 +64,12 @@ public class Neo4jExtension implements BeforeAllCallback, BeforeEachCallback {
 	public final static String NEEDS_REACTIVE_SUPPORT = "reactive-test";
 	public final static String COMMUNITY_EDITION_ONLY = "community-edition";
 	public final static String COMMERCIAL_EDITION_ONLY = "commercial-edition";
-	public final static String INCOMPATIBLE_WITH_AURA = "incompatible-with-aura";
+	/**
+	 * Indicator that a given _test_ is not compatible in all cases with a cluster setup, especially in terms of
+	 * synchronizing bookmarks between fixture / assertions and tests. Or it may indicate a dedicated cluster test, running
+	 * against a dedicated extension.
+	 */
+	public final static String INCOMPATIBLE_WITH_CLUSTERS = "incompatible-with-clusters";
 	public final static String REQUIRES = "Neo4j/";
 
 	private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(Neo4jExtension.class);

@@ -106,7 +106,7 @@ public class runtests {
 					.selectors(selectors)
 					.filters(
 							includeClassNamePatterns(".*IT.*"),
-							excludeTags("incompatible-with-aura")
+							excludeTags("incompatible-with-clusters")
 					)
 					.build();
 

@@ -60,7 +60,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Michael J. Simons
  */
 @CausalClusterIntegrationTest
-@Tag(Neo4jExtension.INCOMPATIBLE_WITH_AURA)
+@Tag(Neo4jExtension.INCOMPATIBLE_WITH_CLUSTERS)
 class ReactiveCausalClusterLoadTestIT {
 
 	@CausalCluster private static URI neo4jUri;

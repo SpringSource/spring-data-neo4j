@@ -249,7 +249,7 @@ class RepositoryIT {
 		@Test
 		void findAllWithoutResultDoesNotThrowAnException(@Autowired PersonRepository repository) {
 
-			doWithSession(session -> session.run("MATCH (n:PersonWithAllConstructor) DETACH DELETE n;"));
+			doWithSession(session -> session.run("MATCH (n:PersonWithAllConstructor) DETACH DELETE n").consume());
 
 			List<PersonWithAllConstructor> people = repository.findAll();
 			assertThat(people).hasSize(0);
@@ -305,7 +305,7 @@ class RepositoryIT {
 
 		@Test
 		void findByConvertedId(@Autowired EntityWithConvertedIdRepository repository) {
-			doWithSession(session -> session.run("CREATE (:EntityWithConvertedId{identifyingEnum:'A'})"));
+			doWithSession(session -> session.run("CREATE (:EntityWithConvertedId{identifyingEnum:'A'})").consume());
 
 			Optional<EntityWithConvertedId> entity = repository.findById(EntityWithConvertedId.IdentifyingEnum.A);
 			assertThat(entity).isPresent();
@@ -314,7 +314,7 @@ class RepositoryIT {
 
 		@Test
 		void findAllByConvertedId(@Autowired EntityWithConvertedIdRepository repository) {
-			doWithSession(session -> session.run("CREATE (:EntityWithConvertedId{identifyingEnum:'A'})"));
+			doWithSession(session -> session.run("CREATE (:EntityWithConvertedId{identifyingEnum:'A'})").consume());
 
 			List<EntityWithConvertedId> entities = repository.findAllById(Collections.singleton(EntityWithConvertedId.IdentifyingEnum.A));
 

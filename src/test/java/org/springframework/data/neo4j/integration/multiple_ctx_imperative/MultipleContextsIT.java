@@ -49,7 +49,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @SpringJUnitConfig(classes = { SharedConfig.class, Domain1Config.class, Domain2Config.class })
 @Testcontainers(disabledWithoutDocker = true)
-@Tag(Neo4jExtension.INCOMPATIBLE_WITH_AURA)
+@Tag(Neo4jExtension.INCOMPATIBLE_WITH_CLUSTERS)
 public class MultipleContextsIT {
 
 	@Container
