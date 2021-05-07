@@ -232,6 +232,7 @@ public abstract class CompositePropertiesITBase {
 							Collections.singletonMap("id", id)).single());
 			Relationship rel = r.get("r").asRelationship();
 			assertThat(rel.asMap()).containsExactlyInAnyOrderEntriesOf(relationshipProperties);
+			bookmarkCapture.seedWith(session.lastBookmark());
 		}
 	}
 }
