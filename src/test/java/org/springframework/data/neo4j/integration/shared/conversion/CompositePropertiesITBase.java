@@ -102,7 +102,7 @@ public abstract class CompositePropertiesITBase {
 	}
 
 	protected long createRelationshipWithCompositeProperties() {
-		try (Session session = driver.session()) {
+		try (Session session = driver.session(bookmarkCapture.createSessionConfig())) {
 			long id = session.writeTransaction(
 					tx -> tx.run(
 							"CREATE (t:CompositeProperties) -[r:IRRELEVANT_TYPE] -> (:Club) SET r = $properties RETURN id(t)",
@@ -226,7 +226,7 @@ public abstract class CompositePropertiesITBase {
 
 	protected void assertRelationshipPropertiesInGraph(long id) {
 
-		try (Session session = driver.session()) {
+		try (Session session = driver.session(bookmarkCapture.createSessionConfig())) {
 			Record r = session.readTransaction(
 					tx -> tx.run("MATCH (t:CompositeProperties) - [r:IRRELEVANT_TYPE] -> () WHERE id(t) = $id RETURN r",
 							Collections.singletonMap("id", id)).single());
