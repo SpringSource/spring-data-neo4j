@@ -1301,9 +1301,9 @@ class RepositoryIT {
 			);
 		}
 
-		private void assertOneToOneScenarioWithNulls(List<OneToOneSource> oneToOnes) {
+		private void assertOneToOneScenarioWithNulls(List<OneToOneSource.OneToOneSourceProjection> oneToOnes) {
 			assertThat(oneToOnes).hasSize(2);
-			assertThat(oneToOnes).extracting(OneToOneSource::getName).containsExactlyInAnyOrder("s1", "s2");
+			assertThat(oneToOnes).extracting(OneToOneSource.OneToOneSourceProjection::getName).containsExactlyInAnyOrder("s1", "s2");
 			assertThat(oneToOnes).filteredOn(s -> s.getTarget() != null)
 					.extracting(s -> s.getTarget().getName()).containsExactly("t1");
 		}
@@ -1312,7 +1312,7 @@ class RepositoryIT {
 		void shouldFindOneToOneWithNullValues(@Autowired OneToOneRepository repository)  {
 			createOneToOneScenarioForNullValues();
 
-			List<OneToOneSource> oneToOnes = repository.findAllWithNullValues();
+			List<OneToOneSource.OneToOneSourceProjection> oneToOnes = repository.findAllWithNullValues();
 			assertOneToOneScenarioWithNulls(oneToOnes);
 		}
 	}
@@ -4146,8 +4146,8 @@ class RepositoryIT {
 		@Query("MATCH (p1:#{#staticLabels})-[r:OWNS]-(p2) return *")
 		List<OneToOneSource> findAllWithCustomQueryReturnStar();
 
-		@Query("MATCH (p1:#{#staticLabels}) OPTIONAL MATCH (p1)-[r:OWNS]->(p2) return p1, r, p2")
-		List<OneToOneSource> findAllWithNullValues();
+		@Query("MATCH (p1:#{#staticLabels}) OPTIONAL MATCH (p1)-[r:OWNS]->(p2:OneToOneTarget) return p1, r, p2")
+		List<OneToOneSource.OneToOneSourceProjection> findAllWithNullValues();
 	}
 
 	interface RelationshipRepository extends Neo4jRepository<PersonWithRelationship, Long> {
